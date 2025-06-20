@@ -165,9 +165,7 @@ export function YouTubeThumbnail({
     <div 
       className="relative w-full h-full bg-muted rounded-lg overflow-hidden cursor-pointer group"
       onClick={onClick}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <Image
+    >      <Image
         src={getThumbnailUrl()}
         alt={title}
         height={480}

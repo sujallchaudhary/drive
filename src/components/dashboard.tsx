@@ -5,19 +5,18 @@ import { useSession, signOut } from 'next-auth/react';
 import { Header } from './layout/header';
 import { Sidebar } from './layout/sidebar';
 import { FileList } from './files/file-list';
-import { FileUpload } from './files/file-upload';
+import { FileUploadSecure } from './files/file-upload-secure';
 import { YouTubeUpload } from './files/youtube-upload';
 import { SearchBar } from './ui/search-bar';
-import { FileFilter, FileMetadata, UploadProgress } from '@/types';
+import { FileFilter, FileMetadata } from '@/types';
 import { toast } from 'sonner';
 
 export function Dashboard() {
   const { data: session, status } = useSession();  const [files, setFiles] = useState<FileMetadata[]>([]);
   const [trashFiles, setTrashFiles] = useState<FileMetadata[]>([]);
   const [filteredFiles, setFilteredFiles] = useState<FileMetadata[]>([]);
-  const [isLoading, setIsLoading] = useState(true);const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);  const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FileFilter>('all');
-  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [storageInfo, setStorageInfo] = useState({
     used: 0,
@@ -132,78 +131,11 @@ export function Dashboard() {
       fetchTrashFiles();
       fetchStorageInfo();
     }
-  }, [status]);
-
-  // Handle file upload
-  const handleFileUpload = async (uploadedFiles: File[]) => {
-    const newUploadProgress: UploadProgress[] = uploadedFiles.map((file, index) => ({
-      fileId: `temp-${Date.now()}-${index}`,
-      fileName: file.name,
-      progress: 0,
-      status: 'uploading',
-    }));
-
-    setUploadProgress(prev => [...prev, ...newUploadProgress]);
-
-    try {
-      const uploadPromises = uploadedFiles.map(async (file, index) => {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const progressId = `temp-${Date.now()}-${index}`;
-
-        try {
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (!response.ok) {
-            throw new Error('Upload failed');
-          }
-
-          const result = await response.json();
-
-          // Update progress to completed
-          setUploadProgress(prev => 
-            prev.map(p => 
-              p.fileId === progressId 
-                ? { ...p, progress: 100, status: 'completed' }
-                : p
-            )
-          );
-
-          return result.file;
-        } catch (error) {
-          // Update progress to error
-          setUploadProgress(prev => 
-            prev.map(p => 
-              p.fileId === progressId 
-                ? { ...p, status: 'error', error: 'Upload failed' }
-                : p
-            )
-          );
-          
-          throw error;
-        }
-      });
-
-      await Promise.all(uploadPromises);
-        // Refresh file list and storage info
-      await fetchFiles();
-      await fetchStorageInfo();
-      
-      toast.success(`${uploadedFiles.length} file(s) uploaded successfully!`);
-      
-      // Clear upload progress after a delay
-      setTimeout(() => {
-        setUploadProgress([]);
-      }, 3000);
-
-    } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Some files failed to upload');
-    }
+  }, [status]);  // Handle file upload - now just refreshes the file list since upload is handled in component
+  const handleFileUpload = async () => {
+    // Just refresh the file list and storage info since upload is already complete
+    await fetchFiles();
+    await fetchStorageInfo();
   };
   // Handle file delete
   const handleFileDelete = async (fileId: string) => {
@@ -398,45 +330,13 @@ export function Dashboard() {
                   onChange={setSearchQuery}
                   placeholder="Search files..."                />
                 <div className="flex gap-2">
-                  <FileUpload onUpload={handleFileUpload} />
+                  <FileUploadSecure onUpload={handleFileUpload} />
                   <YouTubeUpload onUpload={handleYouTubeUpload} />
                 </div>
               </div>
-            </div>
+            </div>            {/* Upload Progress is now handled inside the FileUploadSecure component */}
 
-            {/* Upload Progress */}
-            {uploadProgress.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-medium mb-3">Uploading Files</h3>
-                <div className="space-y-2">
-                  {uploadProgress.map((progress) => (
-                    <div key={progress.fileId} className="bg-card p-3 rounded-lg border">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium truncate">
-                          {progress.fileName}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {progress.status === 'completed' ? 'Completed' : 
-                           progress.status === 'error' ? 'Failed' : 
-                           `${progress.progress}%`}
-                        </span>
-                      </div>
-                      {progress.status === 'uploading' && (
-                        <div className="w-full bg-secondary rounded-full h-2">
-                          <div
-                            className="bg-primary h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${progress.progress}%` }}
-                          />
-                        </div>
-                      )}
-                      {progress.status === 'error' && (
-                        <p className="text-xs text-destructive">{progress.error}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}            <FileList
+            <FileList
               files={filteredFiles}
               isLoading={isLoading}
               onFileDelete={handleFileDelete}
