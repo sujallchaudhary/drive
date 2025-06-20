@@ -117,7 +117,7 @@ export function FileUpload({ onUpload }: FileUploadProps) {
                     className="flex items-center justify-between p-2 bg-muted rounded-lg"
                   >
                     <div className="flex items-center space-x-2 flex-1 min-w-0">
-                      <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <File className="h-4 w-4 text-muted-foreground shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{file.name}</p>
                         <p className="text-xs text-muted-foreground">
@@ -129,7 +129,7 @@ export function FileUpload({ onUpload }: FileUploadProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => removeFile(index)}
-                      className="h-6 w-6 p-0 flex-shrink-0"
+                      className="h-6 w-6 p-0 shrink-0"
                     >
                       <X className="h-3 w-3" />
                     </Button>

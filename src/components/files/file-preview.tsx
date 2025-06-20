@@ -167,7 +167,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
               {getFileTypeIcon()}
               <DialogTitle className="truncate">{file.name}</DialogTitle>
             </div>
-            <div className="flex items-center space-x-2 flex-shrink-0">
+            <div className="flex items-center space-x-2 shrink-0">
               <Button
                 variant="outline"
                 size="sm"
