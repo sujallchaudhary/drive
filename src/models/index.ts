@@ -109,7 +109,6 @@ const FileSchema = new Schema<IFile>({
   blobName: {
     type: String,
     required: true,
-    unique: true
   },
   userId: {
     type: String,
