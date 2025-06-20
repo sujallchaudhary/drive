@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Download, Eye, FileText, Image as ImageIcon, Video, File as FileIcon } from 'lucide-react';
 import { formatFileSize, formatRelativeDate } from '@/lib/file-utils';
 import { toast } from 'sonner';
+import { YouTubeEmbed } from '@/components/files/youtube-player';
 
 interface SharedFile {
   _id: string;
@@ -18,6 +19,13 @@ interface SharedFile {
   blobUrl: string;
   uploadedAt: string;
   description?: string;
+  isYouTube?: boolean;
+  youTubeData?: {
+    type: 'youtube-video' | 'youtube-playlist';
+    videoId?: string;
+    playlistId?: string;
+    thumbnail?: string;
+  };
 }
 
 export default function SharePage() {
@@ -127,9 +135,8 @@ export default function SharePage() {
             <CardTitle className="flex items-center gap-3">
               {getFileIcon(file.fileType)}
               <div className="flex-1">
-                <h2 className="text-xl font-semibold truncate">{file.name}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {formatFileSize(file.size)} • Shared {formatRelativeDate(new Date(file.uploadedAt))}
+                <h2 className="text-xl font-semibold truncate">{file.name}</h2>                <p className="text-sm text-muted-foreground">
+                  {file.isYouTube ? 'YouTube' : formatFileSize(file.size)} • Shared {formatRelativeDate(new Date(file.uploadedAt))}
                 </p>
               </div>
             </CardTitle>
@@ -153,7 +160,7 @@ export default function SharePage() {
               </div>
             )}
 
-            {file.fileType === 'video' && (
+            {file.fileType === 'video' && !file.isYouTube && (
               <div className="rounded-lg border overflow-hidden">
                 <video 
                   src={file.blobUrl} 
@@ -165,20 +172,39 @@ export default function SharePage() {
               </div>
             )}
 
-            {/* Action Buttons */}
+            {file.fileType === 'video' && file.isYouTube && file.youTubeData && (
+              <div className="rounded-lg border overflow-hidden">
+                <YouTubeEmbed
+                  videoId={file.youTubeData.videoId}
+                  playlistId={file.youTubeData.playlistId}
+                  title={file.name}
+                  className="aspect-video w-full"
+                />
+              </div>
+            )}            {/* Action Buttons */}
             <div className="flex gap-3">
-              <Button onClick={handleView} className="flex-1">
-                <Eye className="mr-2 h-4 w-4" />
-                View File
-              </Button>
-              <Button onClick={handleDownload} variant="outline" className="flex-1">
-                <Download className="mr-2 h-4 w-4" />
-                Download
-              </Button>
+              {!file.isYouTube && (
+                <>
+                  <Button onClick={handleView} className="flex-1">
+                    <Eye className="mr-2 h-4 w-4" />
+                    View File
+                  </Button>
+                  <Button onClick={handleDownload} variant="outline" className="flex-1">
+                    <Download className="mr-2 h-4 w-4" />
+                    Download
+                  </Button>
+                </>
+              )}
+              {file.isYouTube && (
+                <Button onClick={handleView} className="w-full">
+                  <Eye className="mr-2 h-4 w-4" />
+                  Open in YouTube
+                </Button>
+              )}
             </div>
 
             <div className="text-center text-xs text-muted-foreground">
-              <p>This file was shared using Drive Clone</p>
+              <p>This file was shared using Sdrive</p>
             </div>
           </CardContent>
         </Card>

@@ -18,6 +18,13 @@ export interface FileMetadata {
   isPublic?: boolean;
   shareToken?: string;
   shareExpiry?: Date;
+  isYouTube?: boolean;
+  youTubeData?: {
+    type: 'youtube-video' | 'youtube-playlist';
+    videoId?: string;
+    playlistId?: string;
+    thumbnail?: string;
+  };
 }
 
 export interface User {

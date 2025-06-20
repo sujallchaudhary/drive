@@ -6,6 +6,7 @@ import { Header } from './layout/header';
 import { Sidebar } from './layout/sidebar';
 import { FileList } from './files/file-list';
 import { FileUpload } from './files/file-upload';
+import { YouTubeUpload } from './files/youtube-upload';
 import { SearchBar } from './ui/search-bar';
 import { FileFilter, FileMetadata, UploadProgress } from '@/types';
 import { toast } from 'sonner';
@@ -306,6 +307,41 @@ export function Dashboard() {
       toast.error('Failed to permanently delete file');
     }
   };
+  // Handle YouTube video upload
+  const handleYouTubeUpload = async (youtubeData: {
+    type: 'youtube-video' | 'youtube-playlist';
+    url: string;
+    title: string;
+    description?: string;
+    thumbnail: string;
+    videoId?: string;
+    playlistId?: string;
+  }) => {
+    try {
+      const response = await fetch('/api/youtube', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(youtubeData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add YouTube video');
+      }
+
+      const data = await response.json();
+      
+      // Add the new YouTube video to the files list
+      setFiles(prev => [data.file, ...prev]);
+      
+      toast.success('YouTube video added successfully');
+    } catch (error) {
+      console.error('Error adding YouTube video:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to add YouTube video');
+    }
+  };
 
   if (status === 'loading') {
     return (
@@ -360,9 +396,11 @@ export function Dashboard() {
                 <SearchBar
                   value={searchQuery}
                   onChange={setSearchQuery}
-                  placeholder="Search files..."
-                />
-                <FileUpload onUpload={handleFileUpload} />
+                  placeholder="Search files..."                />
+                <div className="flex gap-2">
+                  <FileUpload onUpload={handleFileUpload} />
+                  <YouTubeUpload onUpload={handleYouTubeUpload} />
+                </div>
               </div>
             </div>
 

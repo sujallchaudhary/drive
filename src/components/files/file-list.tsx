@@ -40,6 +40,7 @@ import {
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { ShareDialog } from './share-dialog';
+import { YouTubePlayer, YouTubeThumbnail } from './youtube-player';
 
 interface FileListProps {
   files: FileMetadata[];
@@ -65,10 +66,12 @@ export function FileList({
   onFilePermanentDelete,
   searchQuery,
   showTrashActions = false
-}: FileListProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+}: FileListProps) {  const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [editingFile, setEditingFile] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [youtubePlayerOpen, setYoutubePlayerOpen] = useState(false);
+  const [selectedYouTubeFile, setSelectedYouTubeFile] = useState<FileMetadata | null>(null);
+  const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
 
   const getFileTypeIcon = (fileType: string) => {
     switch (fileType) {
@@ -103,7 +106,6 @@ export function FileList({
       onFileDelete(file._id);
     }
   };
-
   const handleRename = (file: FileMetadata) => {
     setEditingFile(file._id);
     setEditName(file.name);
@@ -120,6 +122,22 @@ export function FileList({
   const handleCancelRename = () => {
     setEditingFile(null);
     setEditName('');
+  };
+
+  const handleDropdownOpenChange = (fileId: string, isOpen: boolean) => {
+    setOpenDropdowns(prev => {
+      const newSet = new Set(prev);
+      if (isOpen) {
+        newSet.add(fileId);
+      } else {
+        newSet.delete(fileId);
+      }
+      return newSet;
+    });
+  };
+
+  const isAnyDropdownOpen = (fileId: string) => {
+    return openDropdowns.has(fileId) || editingFile === fileId;
   };
 
   const handleToggleStar = (file: FileMetadata) => {
@@ -139,7 +157,22 @@ export function FileList({
   };
 
   const handleOpenInNewTab = (file: FileMetadata) => {
-    window.open(file.blobUrl, '_blank');
+    if (file.isYouTube) {
+      // For YouTube videos, open in YouTube
+      window.open(file.blobUrl, '_blank');
+    } else {
+      window.open(file.blobUrl, '_blank');
+    }
+  };
+
+  const handlePlayYouTube = (file: FileMetadata) => {
+    setSelectedYouTubeFile(file);
+    setYoutubePlayerOpen(true);
+  };
+
+  const closeYouTubePlayer = () => {
+    setYoutubePlayerOpen(false);
+    setSelectedYouTubeFile(null);
   };
 
   const highlightSearchTerm = (text: string, searchTerm: string) => {
@@ -223,19 +256,30 @@ export function FileList({
                 <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>              {files.map((file) => (
-                <TableRow 
+            <TableBody>              {files.map((file) => (                <TableRow 
                   key={file._id} 
-                  className="hover:bg-muted/50"
-                ><TableCell className="flex items-center space-x-3">
+                  className="hover:bg-muted/50 cursor-pointer"
+                  onClick={() => {
+                    // Don't open file if dropdown is open or editing
+                    if (isAnyDropdownOpen(file._id)) {
+                      return;
+                    }
+                    
+                    if (file.isYouTube) {
+                      handlePlayYouTube(file);
+                    } else {
+                      handleOpenInNewTab(file);
+                    }                  }}
+                >
+                  <TableCell className="flex items-center space-x-3">
                     {getFileTypeIcon(file.fileType)}
                     <div className="min-w-0 flex-1">
-                      {editingFile === file._id ? (
-                        <input
+                      {editingFile === file._id ? (                        <input
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
                           onBlur={() => handleSaveRename(file._id)}
+                          onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               handleSaveRename(file._id);
@@ -251,27 +295,25 @@ export function FileList({
                           {file.isStarred && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
                           <p className="font-medium truncate">
                             {highlightSearchTerm(file.name, searchQuery)}
-                          </p>
-                        </div>
+                          </p>                        </div>
                       )}
                       <p className="text-xs text-muted-foreground truncate sm:hidden">
-                        {formatFileSize(file.size)} • {formatRelativeDate(new Date(file.uploadedAt))}
+                        {file.isYouTube ? 'YouTube' : formatFileSize(file.size)} • {formatRelativeDate(new Date(file.uploadedAt))}
                       </p>
                     </div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <span className="capitalize text-sm text-muted-foreground">
-                      {file.fileType}
+                      {file.isYouTube ? 'youtube' : file.fileType}
                     </span>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                    {formatFileSize(file.size)}
+                    {file.isYouTube ? 'YouTube' : formatFileSize(file.size)}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                     {formatRelativeDate(new Date(file.uploadedAt))}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
+                  </TableCell>                  <TableCell>
+                    <DropdownMenu onOpenChange={(isOpen) => handleDropdownOpenChange(file._id, isOpen)}>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                           <MoreHorizontal className="h-4 w-4" />
@@ -279,10 +321,14 @@ export function FileList({
                       </DropdownMenuTrigger>                      <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          handleOpenInNewTab(file);
+                          if (file.isYouTube) {
+                            handlePlayYouTube(file);
+                          } else {
+                            handleOpenInNewTab(file);
+                          }
                         }}>
                           <Eye className="mr-2 h-4 w-4" />
-                          Open in New Tab
+                          {file.isYouTube ? 'Play Video' : 'Open in New Tab'}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
@@ -354,30 +400,38 @@ export function FileList({
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+                  </TableCell>                </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {files.map((file) => (            <Card 
+      ) : (        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">          {files.map((file) => (
+            <Card 
               key={file._id} 
               className="hover:shadow-md transition-shadow"
             >
-              <CardContent className="p-4">
-                <div className="aspect-square bg-muted rounded-lg flex items-center justify-center mb-3">
-                  {file.fileType === 'image' ? (
+              <CardContent className="p-4"><div className="aspect-square bg-muted rounded-lg flex items-center justify-center mb-3 overflow-hidden">                  {file.isYouTube ? (
+                    <YouTubeThumbnail
+                      videoId={file.youTubeData?.videoId}
+                      playlistId={file.youTubeData?.playlistId}
+                      title={file.name}
+                      thumbnail={file.youTubeData?.thumbnail}
+                      onClick={() => handlePlayYouTube(file)}
+                    />
+                  ) : file.fileType === 'image' ? (
                     <Image
                       src={file.blobUrl}
                       alt={file.name}
                       height={500}
                       width={500}
-                      className="w-full h-full object-cover rounded-lg"
+                      className="w-full h-full object-cover rounded-lg cursor-pointer"
+                      onClick={() => handleOpenInNewTab(file)}
                     />
                   ) : (
-                    <div className="text-4xl">
+                    <div 
+                      className="text-4xl cursor-pointer hover:scale-110 transition-transform"
+                      onClick={() => handleOpenInNewTab(file)}
+                    >
                       {getFileIcon(file.fileType)}
                     </div>
                   )}
@@ -385,27 +439,29 @@ export function FileList({
                 <div className="space-y-1">
                   <p className="font-medium truncate text-sm">
                     {highlightSearchTerm(file.name, searchQuery)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatFileSize(file.size)}
+                  </p>                  <p className="text-xs text-muted-foreground">
+                    {file.isYouTube ? 'YouTube' : formatFileSize(file.size)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatRelativeDate(new Date(file.uploadedAt))}
                   </p>
-                </div>
-                <div className="flex justify-end mt-2">
-                  <DropdownMenu>
+                </div>                <div className="flex justify-end mt-2">
+                  <DropdownMenu onOpenChange={(isOpen) => handleDropdownOpenChange(file._id, isOpen)}>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
-                    </DropdownMenuTrigger>                    <DropdownMenuContent align="end">
+                    </DropdownMenuTrigger><DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
-                        handleOpenInNewTab(file);
+                        if (file.isYouTube) {
+                          handlePlayYouTube(file);
+                        } else {
+                          handleOpenInNewTab(file);
+                        }
                       }}>
                         <Eye className="mr-2 h-4 w-4" />
-                        Open in New Tab
+                        {file.isYouTube ? 'Play Video' : 'Open in New Tab'}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
@@ -483,6 +539,17 @@ export function FileList({
             </Card>
           ))}
         </div>
+      )}
+
+      {/* YouTube Player Modal */}
+      {selectedYouTubeFile && (
+        <YouTubePlayer
+          videoId={selectedYouTubeFile.youTubeData?.videoId}
+          playlistId={selectedYouTubeFile.youTubeData?.playlistId}
+          title={selectedYouTubeFile.name}
+          isOpen={youtubePlayerOpen}
+          onOpenChange={closeYouTubePlayer}
+        />
       )}
     </div>
   );

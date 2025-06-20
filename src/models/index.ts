@@ -33,6 +33,13 @@ export interface IFile extends Document {
   isPublic?: boolean;
   shareToken?: string;
   shareExpiry?: Date;
+  isYouTube?: boolean;
+  youTubeData?: {
+    type: 'youtube-video' | 'youtube-playlist';
+    videoId?: string;
+    playlistId?: string;
+    thumbnail?: string;
+  };
 }
 
 const UserSchema = new Schema<IUser>({
@@ -136,10 +143,22 @@ const FileSchema = new Schema<IFile>({
   shareToken: {
     type: String,
     default: null
-  },
-  shareExpiry: {
+  },  shareExpiry: {
     type: Date,
     default: null
+  },
+  isYouTube: {
+    type: Boolean,
+    default: false
+  },
+  youTubeData: {
+    type: {
+      type: String,
+      enum: ['youtube-video', 'youtube-playlist']
+    },
+    videoId: String,
+    playlistId: String,
+    thumbnail: String
   }
 }, {
   timestamps: { createdAt: 'uploadedAt', updatedAt: true }
