@@ -6,6 +6,9 @@ export interface IUser extends Document {
   name: string;
   password: string;
   avatar?: string;
+  storageLimit: number; // in bytes
+  storageUsed: number; // in bytes
+  starredFiles: string[]; // array of file IDs
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,8 +26,11 @@ export interface IFile extends Document {
   uploadedAt: Date;
   updatedAt: Date;
   isDeleted: boolean;
+  isStarred: boolean;
   tags?: string[];
   description?: string;
+  sharedWith?: string[]; // array of user IDs
+  isPublic?: boolean;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -43,11 +49,22 @@ const UserSchema = new Schema<IUser>({
   password: {
     type: String,
     required: true
-  },
-  avatar: {
+  },  avatar: {
     type: String,
     default: null
-  }
+  },
+  storageLimit: {
+    type: Number,
+    default: 5 * 1024 * 1024 * 1024 // 5GB in bytes
+  },
+  storageUsed: {
+    type: Number,
+    default: 0
+  },
+  starredFiles: [{
+    type: Schema.Types.ObjectId,
+    ref: 'File'
+  }]
 }, {
   timestamps: true
 });
@@ -88,8 +105,11 @@ const FileSchema = new Schema<IFile>({
   userId: {
     type: String,
     required: true
+  },  isDeleted: {
+    type: Boolean,
+    default: false
   },
-  isDeleted: {
+  isStarred: {
     type: Boolean,
     default: false
   },
@@ -100,6 +120,14 @@ const FileSchema = new Schema<IFile>({
   description: {
     type: String,
     trim: true
+  },
+  sharedWith: [{
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  isPublic: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: { createdAt: 'uploadedAt', updatedAt: true }

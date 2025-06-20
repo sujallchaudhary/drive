@@ -27,6 +27,13 @@ interface SidebarProps {
     videos: number;
     pdfs: number;
     docs: number;
+    starred: number;
+    recent: number;
+    trash: number;
+  };
+  storageInfo: {
+    used: number;
+    limit: number;
   };
 }
 
@@ -63,22 +70,51 @@ const filterItems = [
   },
 ];
 
+const quickAccessItems = [
+  {
+    id: 'starred' as FileFilter,
+    label: 'Starred',
+    icon: Star,
+    color: 'text-yellow-500',
+  },
+  {
+    id: 'recent' as FileFilter,
+    label: 'Recent',
+    icon: Clock,
+    color: 'text-blue-500',
+  },
+  {
+    id: 'trash' as FileFilter,
+    label: 'Trash',
+    icon: Trash2,
+    color: 'text-red-500',
+  },
+];
+
 export function Sidebar({ 
   isOpen, 
   onClose, 
   activeFilter, 
   onFilterChange, 
-  fileStats 
-}: SidebarProps) {
-  const getFileCount = (filter: FileFilter) => {
+  fileStats,
+  storageInfo
+}: SidebarProps) {  const getFileCount = (filter: FileFilter) => {
     switch (filter) {
       case 'all': return fileStats.total;
       case 'images': return fileStats.images;
       case 'videos': return fileStats.videos;
       case 'pdfs': return fileStats.pdfs;
       case 'docs': return fileStats.docs;
+      case 'starred': return fileStats.starred;
+      case 'recent': return fileStats.recent;
+      case 'trash': return fileStats.trash;
       default: return 0;
     }
+  };
+
+  const formatStorageSize = (bytes: number) => {
+    const gb = bytes / (1024 * 1024 * 1024);
+    return gb < 1 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${gb.toFixed(1)} GB`;
   };
 
   return (
@@ -89,12 +125,10 @@ export function Sidebar({
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={onClose}
         />
-      )}
-
-      {/* Sidebar */}
+      )}      {/* Sidebar */}
       <div
         className={cn(
-          'fixed left-0 top-0 z-50 h-full w-64 bg-background border-r border-border transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 lg:z-0',
+          'sidebar-container fixed left-0 top-0 z-50 h-full w-64 transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 lg:z-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -135,43 +169,34 @@ export function Sidebar({
                 );
               })}
             </nav>
-          </div>
-
-          <div className="border-t border-border pt-4">
+          </div>          <div className="border-t border-border pt-4">
             <h3 className="mb-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Quick Access
             </h3>
             <nav className="space-y-1">
-              <Button
-                variant="ghost"
-                className="w-full justify-start h-10 px-4"
-                disabled
-              >
-                <Star className="mr-3 h-4 w-4 text-yellow-500" />
-                <span className="flex-1 text-left">Starred</span>
-                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                  0
-                </span>
-              </Button>
-              
-              <Button
-                variant="ghost"
-                className="w-full justify-start h-10 px-4"
-                disabled
-              >
-                <Clock className="mr-3 h-4 w-4 text-blue-500" />
-                <span className="flex-1 text-left">Recent</span>
-              </Button>
-              
-              <Button
-                variant="ghost"
-                className="w-full justify-start h-10 px-4"
-                disabled
-              >
-                <Trash2 className="mr-3 h-4 w-4 text-red-500" />
-                <span className="flex-1 text-left">Trash</span>
-              </Button>
-            </nav>
+              {quickAccessItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeFilter === item.id;
+                const count = getFileCount(item.id);
+
+                return (
+                  <Button
+                    key={item.id}
+                    variant={isActive ? 'secondary' : 'ghost'}
+                    className={cn(
+                      'w-full justify-start h-10 px-4',
+                      isActive && 'bg-secondary text-secondary-foreground'
+                    )}
+                    onClick={() => onFilterChange(item.id)}
+                  >
+                    <Icon className={cn('mr-3 h-4 w-4', item.color)} />
+                    <span className="flex-1 text-left">{item.label}</span>
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                      {count}
+                    </span>
+                  </Button>
+                );
+              })}            </nav>
           </div>
 
           <div className="border-t border-border pt-4">
@@ -191,11 +216,11 @@ export function Sidebar({
               <div className="w-full bg-secondary rounded-full h-2">
                 <div
                   className="bg-primary h-2 rounded-full"
-                  style={{ width: '25%' }}
+                  style={{ width: `${Math.round((storageInfo.used / storageInfo.limit) * 100)}%` }}
                 />
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                2.5 GB of 10 GB used
+                {formatStorageSize(storageInfo.used)} of {formatStorageSize(storageInfo.limit)} used
               </p>
             </div>
           </div>

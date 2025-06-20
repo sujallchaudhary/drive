@@ -90,8 +90,21 @@ export function filterFilesByType(files: FileMetadata[], filter: FileFilter): Fi
     return files;
   }
   
-  const typeMap: Record<FileFilter, string[]> = {
-    all: [],
+  if (filter === 'starred') {
+    return files.filter(file => file.isStarred);
+  }
+  
+  if (filter === 'recent') {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return files.filter(file => new Date(file.uploadedAt) >= sevenDaysAgo);
+  }
+  
+  if (filter === 'trash') {
+    return files.filter(file => file.isDeleted);
+  }
+  
+  const typeMap: Record<string, string[]> = {
     images: ['image'],
     videos: ['video'],
     pdfs: ['pdf'],
@@ -99,6 +112,10 @@ export function filterFilesByType(files: FileMetadata[], filter: FileFilter): Fi
   };
   
   const allowedTypes = typeMap[filter];
+  if (!allowedTypes) {
+    return files;
+  }
+  
   return files.filter(file => allowedTypes.includes(file.fileType));
 }
 

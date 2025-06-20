@@ -11,8 +11,11 @@ export interface FileMetadata {
   uploadedAt: Date;
   updatedAt: Date;
   isDeleted: boolean;
+  isStarred: boolean;
   tags?: string[];
   description?: string;
+  sharedWith?: string[];
+  isPublic?: boolean;
 }
 
 export interface User {
@@ -21,11 +24,14 @@ export interface User {
   name: string;
   password: string;
   avatar?: string;
+  storageLimit: number;
+  storageUsed: number;
+  starredFiles: string[];
   createdAt: Date;
   updatedAt: Date;
 }
 
-export type FileFilter = 'all' | 'images' | 'videos' | 'pdfs' | 'docs';
+export type FileFilter = 'all' | 'images' | 'videos' | 'pdfs' | 'docs' | 'starred' | 'recent' | 'trash';
 
 export interface UploadProgress {
   fileId: string;

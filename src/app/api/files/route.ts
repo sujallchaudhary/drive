@@ -37,20 +37,33 @@ export async function GET(request: NextRequest) {
         { description: { $regex: search, $options: 'i' } },
         { tags: { $in: [new RegExp(search, 'i')] } }
       ];
-    }
-
-    // Add file type filter
+    }    // Add file type filter
     if (filter !== 'all') {
-      const typeMap: Record<FileFilter, string[]> = {
-        all: [],
-        images: ['image'],
-        videos: ['video'],
-        pdfs: ['pdf'],
-        docs: ['document'],
-      };
-      
-      if (typeMap[filter]) {
-        query.fileType = { $in: typeMap[filter] };
+      if (filter === 'starred') {
+        query.isStarred = true;
+      } else if (filter === 'recent') {
+        // Recent files from last 7 days
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        query.uploadedAt = { $gte: sevenDaysAgo };
+      } else if (filter === 'trash') {
+        query.isDeleted = true;
+        delete query.isDeleted; // Remove the previous isDeleted: false
+      } else {
+        const typeMap: Record<FileFilter, string[]> = {
+          all: [],
+          images: ['image'],
+          videos: ['video'],
+          pdfs: ['pdf'],
+          docs: ['document'],
+          starred: [],
+          recent: [],
+          trash: [],
+        };
+        
+        if (typeMap[filter] && typeMap[filter].length > 0) {
+          query.fileType = { $in: typeMap[filter] };
+        }
       }
     }
 

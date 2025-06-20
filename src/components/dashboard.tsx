@@ -6,7 +6,6 @@ import { Header } from './layout/header';
 import { Sidebar } from './layout/sidebar';
 import { FileList } from './files/file-list';
 import { FileUpload } from './files/file-upload';
-import { FilePreview } from './files/file-preview';
 import { SearchBar } from './ui/search-bar';
 import { FileFilter, FileMetadata, UploadProgress } from '@/types';
 import { toast } from 'sonner';
@@ -15,12 +14,29 @@ export function Dashboard() {
   const { data: session, status } = useSession();
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [filteredFiles, setFilteredFiles] = useState<FileMetadata[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);  const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FileFilter>('all');
-  const [selectedFile, setSelectedFile] = useState<FileMetadata | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [storageInfo, setStorageInfo] = useState({
+    used: 0,
+    limit: 5 * 1024 * 1024 * 1024 // 5GB default
+  });
+  // Fetch storage info
+  const fetchStorageInfo = async () => {
+    try {
+      const response = await fetch('/api/user/storage');
+      if (response.ok) {
+        const data = await response.json();
+        setStorageInfo({
+          used: data.storageUsed,
+          limit: data.storageLimit
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching storage info:', error);
+    }
+  };
 
   // Fetch files from API
   const fetchFiles = async () => {
@@ -45,23 +61,33 @@ export function Dashboard() {
       setIsLoading(false);
     }
   };
-
   // Filter and search files
   useEffect(() => {
     let result = files;
 
     // Apply filter
     if (activeFilter !== 'all') {
-      const typeMap: Record<FileFilter, string[]> = {
-        all: [],
-        images: ['image'],
-        videos: ['video'],
-        pdfs: ['pdf'],
-        docs: ['document'],
-      };
-      
-      const allowedTypes = typeMap[activeFilter];
-      result = result.filter(file => allowedTypes.includes(file.fileType));
+      if (activeFilter === 'starred') {
+        result = result.filter(file => file.isStarred);
+      } else if (activeFilter === 'recent') {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        result = result.filter(file => new Date(file.uploadedAt) >= sevenDaysAgo);
+      } else if (activeFilter === 'trash') {
+        result = result.filter(file => file.isDeleted);
+      } else {
+        const typeMap: Record<string, string[]> = {
+          images: ['image'],
+          videos: ['video'],
+          pdfs: ['pdf'],
+          docs: ['document'],
+        };
+        
+        const allowedTypes = typeMap[activeFilter];
+        if (allowedTypes) {
+          result = result.filter(file => allowedTypes.includes(file.fileType));
+        }
+      }
     }
 
     // Apply search
@@ -77,11 +103,11 @@ export function Dashboard() {
 
     setFilteredFiles(result);
   }, [files, activeFilter, searchQuery]);
-
   // Load files on component mount
   useEffect(() => {
     if (status === 'authenticated') {
       fetchFiles();
+      fetchStorageInfo();
     }
   }, [status]);
 
@@ -140,9 +166,9 @@ export function Dashboard() {
       });
 
       await Promise.all(uploadPromises);
-      
-      // Refresh file list
+        // Refresh file list and storage info
       await fetchFiles();
+      await fetchStorageInfo();
       
       toast.success(`${uploadedFiles.length} file(s) uploaded successfully!`);
       
@@ -156,7 +182,6 @@ export function Dashboard() {
       toast.error('Some files failed to upload');
     }
   };
-
   // Handle file delete
   const handleFileDelete = async (fileId: string) => {
     try {
@@ -169,10 +194,52 @@ export function Dashboard() {
       }
 
       setFiles(prev => prev.filter(f => f._id !== fileId));
+      await fetchStorageInfo(); // Refresh storage info
       toast.success('File deleted successfully');
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Failed to delete file');
+    }
+  };
+
+  // Handle file rename
+  const handleFileRename = async (fileId: string, newName: string) => {
+    try {
+      const response = await fetch(`/api/files/${fileId}/rename`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newName }),
+      });      if (!response.ok) {
+        throw new Error('Failed to rename file');
+      }
+
+      setFiles(prev => prev.map(f => f._id === fileId ? { ...f, name: newName } : f));
+      toast.success('File renamed successfully');
+    } catch (error) {
+      console.error('Rename error:', error);
+      toast.error('Failed to rename file');
+    }
+  };
+
+  // Handle file star toggle
+  const handleFileToggleStar = async (fileId: string) => {
+    try {
+      const response = await fetch(`/api/files/${fileId}/star`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle star');
+      }
+
+      const result = await response.json();
+      setFiles(prev => prev.map(f => f._id === fileId ? { ...f, isStarred: result.isStarred } : f));
+      toast.success(result.isStarred ? 'File starred' : 'File unstarred');
+    } catch (error) {
+      console.error('Star toggle error:', error);
+      toast.error('Failed to update star status');
     }
   };
 
@@ -190,14 +257,21 @@ export function Dashboard() {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-        fileStats={{
-          total: files.length,
-          images: files.filter(f => f.fileType === 'image').length,
-          videos: files.filter(f => f.fileType === 'video').length,
-          pdfs: files.filter(f => f.fileType === 'pdf').length,
-          docs: files.filter(f => f.fileType === 'document').length,
+        onFilterChange={setActiveFilter}        fileStats={{
+          total: files.filter(f => !f.isDeleted).length,
+          images: files.filter(f => f.fileType === 'image' && !f.isDeleted).length,
+          videos: files.filter(f => f.fileType === 'video' && !f.isDeleted).length,
+          pdfs: files.filter(f => f.fileType === 'pdf' && !f.isDeleted).length,
+          docs: files.filter(f => f.fileType === 'document' && !f.isDeleted).length,
+          starred: files.filter(f => f.isStarred && !f.isDeleted).length,
+          recent: files.filter(f => {
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            return new Date(f.uploadedAt) >= sevenDaysAgo && !f.isDeleted;
+          }).length,
+          trash: files.filter(f => f.isDeleted).length,
         }}
+        storageInfo={storageInfo}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -260,26 +334,16 @@ export function Dashboard() {
                   ))}
                 </div>
               </div>
-            )}
-
-            <FileList
+            )}            <FileList
               files={filteredFiles}
               isLoading={isLoading}
-              onFileSelect={setSelectedFile}
               onFileDelete={handleFileDelete}
+              onFileRename={handleFileRename}
+              onFileToggleStar={handleFileToggleStar}
               searchQuery={searchQuery}
             />
-          </div>
-        </main>
+          </div>        </main>
       </div>
-
-      {selectedFile && (
-        <FilePreview
-          file={selectedFile}
-          isOpen={!!selectedFile}
-          onClose={() => setSelectedFile(null)}
-        />
-      )}
     </div>
   );
 }

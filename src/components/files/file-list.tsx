@@ -41,8 +41,9 @@ import Image from 'next/image';
 interface FileListProps {
   files: FileMetadata[];
   isLoading: boolean;
-  onFileSelect: (file: FileMetadata) => void;
   onFileDelete: (fileId: string) => void;
+  onFileRename: (fileId: string, newName: string) => void;
+  onFileToggleStar: (fileId: string) => void;
   searchQuery: string;
 }
 
@@ -51,11 +52,14 @@ type ViewMode = 'table' | 'grid';
 export function FileList({ 
   files, 
   isLoading, 
-  onFileSelect, 
-  onFileDelete, 
+  onFileDelete,
+  onFileRename,
+  onFileToggleStar,
   searchQuery 
 }: FileListProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [editingFile, setEditingFile] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
 
   const getFileTypeIcon = (fileType: string) => {
     switch (fileType) {
@@ -85,11 +89,36 @@ export function FileList({
       toast.error('Failed to download file');
     }
   };
-
   const handleDelete = (file: FileMetadata) => {
     if (confirm(`Are you sure you want to delete "${file.name}"?`)) {
       onFileDelete(file._id);
     }
+  };
+
+  const handleRename = (file: FileMetadata) => {
+    setEditingFile(file._id);
+    setEditName(file.name);
+  };
+
+  const handleSaveRename = (fileId: string) => {
+    if (editName.trim() !== '') {
+      onFileRename(fileId, editName.trim());
+    }
+    setEditingFile(null);
+    setEditName('');
+  };
+
+  const handleCancelRename = () => {
+    setEditingFile(null);
+    setEditName('');
+  };
+
+  const handleToggleStar = (file: FileMetadata) => {
+    onFileToggleStar(file._id);
+  };
+
+  const handleOpenInNewTab = (file: FileMetadata) => {
+    window.open(file.blobUrl, '_blank');
   };
 
   const highlightSearchTerm = (text: string, searchTerm: string) => {
@@ -173,19 +202,37 @@ export function FileList({
                 <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {files.map((file) => (
+            <TableBody>              {files.map((file) => (
                 <TableRow 
                   key={file._id} 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => onFileSelect(file)}
-                >
-                  <TableCell className="flex items-center space-x-3">
+                  className="hover:bg-muted/50"
+                ><TableCell className="flex items-center space-x-3">
                     {getFileTypeIcon(file.fileType)}
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">
-                        {highlightSearchTerm(file.name, searchQuery)}
-                      </p>
+                      {editingFile === file._id ? (
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onBlur={() => handleSaveRename(file._id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleSaveRename(file._id);
+                            } else if (e.key === 'Escape') {
+                              handleCancelRename();
+                            }
+                          }}
+                          className="w-full px-2 py-1 text-sm border rounded"
+                          autoFocus
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          {file.isStarred && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
+                          <p className="font-medium truncate">
+                            {highlightSearchTerm(file.name, searchQuery)}
+                          </p>
+                        </div>
+                      )}
                       <p className="text-xs text-muted-foreground truncate sm:hidden">
                         {formatFileSize(file.size)} • {formatRelativeDate(new Date(file.uploadedAt))}
                       </p>
@@ -208,14 +255,13 @@ export function FileList({
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      </DropdownMenuTrigger>                      <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          onFileSelect(file);
+                          handleOpenInNewTab(file);
                         }}>
                           <Eye className="mr-2 h-4 w-4" />
-                          Preview
+                          Open in New Tab
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
@@ -225,17 +271,22 @@ export function FileList({
                           Download
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem disabled>
-                          <Star className="mr-2 h-4 w-4" />
-                          Add to starred
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleStar(file);
+                        }}>
+                          <Star className={`mr-2 h-4 w-4 ${file.isStarred ? 'text-yellow-500 fill-current' : ''}`} />
+                          {file.isStarred ? 'Unstar' : 'Star'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem disabled>
-                          <Share className="mr-2 h-4 w-4" />
-                          Share
-                        </DropdownMenuItem>
-                        <DropdownMenuItem disabled>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          handleRename(file);
+                        }}>
                           <Edit3 className="mr-2 h-4 w-4" />
                           Rename
+                        </DropdownMenuItem>                        <DropdownMenuItem disabled>
+                          <Share className="mr-2 h-4 w-4" />
+                          Share
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
@@ -258,11 +309,9 @@ export function FileList({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {files.map((file) => (
-            <Card 
+          {files.map((file) => (            <Card 
               key={file._id} 
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => onFileSelect(file)}
+              className="hover:shadow-md transition-shadow"
             >
               <CardContent className="p-4">
                 <div className="aspect-square bg-muted rounded-lg flex items-center justify-center mb-3">
@@ -295,14 +344,13 @@ export function FileList({
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    </DropdownMenuTrigger>                    <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
-                        onFileSelect(file);
+                        handleOpenInNewTab(file);
                       }}>
                         <Eye className="mr-2 h-4 w-4" />
-                        Preview
+                        Open in New Tab
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
