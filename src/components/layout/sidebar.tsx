@@ -15,6 +15,7 @@ import {
   Star,
   Clock
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -98,7 +99,27 @@ export function Sidebar({
   onFilterChange, 
   fileStats,
   storageInfo
-}: SidebarProps) {  const getFileCount = (filter: FileFilter) => {
+}: SidebarProps) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const handleFilterChange = (filter: FileFilter) => {
+    onFilterChange(filter);
+    // Close sidebar on mobile after selection
+    if (isMobile) {
+      onClose();
+    }
+  };const getFileCount = (filter: FileFilter) => {
     switch (filter) {
       case 'all': return fileStats.total;
       case 'images': return fileStats.images;
@@ -150,15 +171,14 @@ export function Sidebar({
                 const isActive = activeFilter === item.id;
                 const count = getFileCount(item.id);
 
-                return (
-                  <Button
+                return (                  <Button
                     key={item.id}
                     variant={isActive ? 'secondary' : 'ghost'}
                     className={cn(
                       'w-full justify-start h-10 px-4',
                       isActive && 'bg-secondary/80'
                     )}
-                    onClick={() => onFilterChange(item.id)}
+                    onClick={() => handleFilterChange(item.id)}
                   >
                     <Icon className={cn('mr-3 h-4 w-4', item.color)} />
                     <span className="flex-1 text-left">{item.label}</span>
@@ -179,15 +199,14 @@ export function Sidebar({
                 const isActive = activeFilter === item.id;
                 const count = getFileCount(item.id);
 
-                return (
-                  <Button
+                return (                  <Button
                     key={item.id}
                     variant={isActive ? 'secondary' : 'ghost'}
                     className={cn(
                       'w-full justify-start h-10 px-4',
                       isActive && 'bg-secondary text-secondary-foreground'
                     )}
-                    onClick={() => onFilterChange(item.id)}
+                    onClick={() => handleFilterChange(item.id)}
                   >
                     <Icon className={cn('mr-3 h-4 w-4', item.color)} />
                     <span className="flex-1 text-left">{item.label}</span>

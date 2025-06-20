@@ -9,12 +9,12 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <SessionProvider>
-      <ThemeProvider
+    <SessionProvider>      <ThemeProvider
         attribute="class"
         defaultTheme="system"
         enableSystem
-        disableTransitionOnChange
+        disableTransitionOnChange={false}
+        storageKey="theme"
       >
         {children}
       </ThemeProvider>
