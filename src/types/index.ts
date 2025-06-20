@@ -11,11 +11,13 @@ export interface FileMetadata {
   uploadedAt: Date;
   updatedAt: Date;
   isDeleted: boolean;
+  deletedAt?: Date;
   isStarred: boolean;
   tags?: string[];
-  description?: string;
-  sharedWith?: string[];
+  description?: string;  sharedWith?: string[];
   isPublic?: boolean;
+  shareToken?: string;
+  shareExpiry?: Date;
 }
 
 export interface User {

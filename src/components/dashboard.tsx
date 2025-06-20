@@ -11,10 +11,10 @@ import { FileFilter, FileMetadata, UploadProgress } from '@/types';
 import { toast } from 'sonner';
 
 export function Dashboard() {
-  const { data: session, status } = useSession();
-  const [files, setFiles] = useState<FileMetadata[]>([]);
+  const { data: session, status } = useSession();  const [files, setFiles] = useState<FileMetadata[]>([]);
+  const [trashFiles, setTrashFiles] = useState<FileMetadata[]>([]);
   const [filteredFiles, setFilteredFiles] = useState<FileMetadata[]>([]);
-  const [isLoading, setIsLoading] = useState(true);  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FileFilter>('all');
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -61,31 +61,55 @@ export function Dashboard() {
       setIsLoading(false);
     }
   };
-  // Filter and search files
-  useEffect(() => {
-    let result = files;
+  // Fetch trash files from API
+  const fetchTrashFiles = async () => {
+    try {
+      const response = await fetch('/api/files/trash');
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          signOut();
+          return;
+        }
+        throw new Error('Failed to fetch trash files');
+      }
 
-    // Apply filter
-    if (activeFilter !== 'all') {
-      if (activeFilter === 'starred') {
-        result = result.filter(file => file.isStarred);
-      } else if (activeFilter === 'recent') {
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        result = result.filter(file => new Date(file.uploadedAt) >= sevenDaysAgo);
-      } else if (activeFilter === 'trash') {
-        result = result.filter(file => file.isDeleted);
-      } else {
-        const typeMap: Record<string, string[]> = {
-          images: ['image'],
-          videos: ['video'],
-          pdfs: ['pdf'],
-          docs: ['document'],
-        };
-        
-        const allowedTypes = typeMap[activeFilter];
-        if (allowedTypes) {
-          result = result.filter(file => allowedTypes.includes(file.fileType));
+      const data = await response.json();
+      setTrashFiles(data.files || []);
+    } catch (error) {
+      console.error('Error fetching trash files:', error);
+      toast.error('Failed to load trash files');
+    }
+  };  // Filter and search files
+  useEffect(() => {
+    let result: FileMetadata[];
+
+    // Use trash files when filter is trash, otherwise use regular files
+    if (activeFilter === 'trash') {
+      result = trashFiles;
+    } else {
+      result = files;
+      
+      // Apply filter for non-trash files
+      if (activeFilter !== 'all') {
+        if (activeFilter === 'starred') {
+          result = result.filter(file => file.isStarred);
+        } else if (activeFilter === 'recent') {
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          result = result.filter(file => new Date(file.uploadedAt) >= sevenDaysAgo);
+        } else {
+          const typeMap: Record<string, string[]> = {
+            images: ['image'],
+            videos: ['video'],
+            pdfs: ['pdf'],
+            docs: ['document'],
+          };
+          
+          const allowedTypes = typeMap[activeFilter];
+          if (allowedTypes) {
+            result = result.filter(file => allowedTypes.includes(file.fileType));
+          }
         }
       }
     }
@@ -99,14 +123,12 @@ export function Dashboard() {
         (file.description && file.description.toLowerCase().includes(query)) ||
         (file.tags && file.tags.some(tag => tag.toLowerCase().includes(query)))
       );
-    }
-
-    setFilteredFiles(result);
-  }, [files, activeFilter, searchQuery]);
-  // Load files on component mount
+    }    setFilteredFiles(result);
+  }, [files, trashFiles, activeFilter, searchQuery]);  // Load files on component mount
   useEffect(() => {
     if (status === 'authenticated') {
       fetchFiles();
+      fetchTrashFiles();
       fetchStorageInfo();
     }
   }, [status]);
@@ -243,6 +265,48 @@ export function Dashboard() {
     }
   };
 
+  // Handle file restore (from trash)
+  const handleFileRestore = async (fileId: string) => {
+    try {
+      const response = await fetch(`/api/files/${fileId}/restore`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to restore file');
+      }
+
+      toast.success('File restored successfully');
+      
+      // Refresh both regular files and trash files
+      await Promise.all([fetchFiles(), fetchTrashFiles(), fetchStorageInfo()]);
+    } catch (error) {
+      console.error('Error restoring file:', error);
+      toast.error('Failed to restore file');
+    }
+  };
+
+  // Handle permanent delete
+  const handleFilePermanentDelete = async (fileId: string) => {
+    try {
+      const response = await fetch(`/api/files/${fileId}/permanent-delete`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to permanently delete file');
+      }
+
+      toast.success('File permanently deleted');
+      
+      // Refresh trash files and storage info
+      await Promise.all([fetchTrashFiles(), fetchStorageInfo()]);
+    } catch (error) {
+      console.error('Error permanently deleting file:', error);
+      toast.error('Failed to permanently delete file');
+    }
+  };
+
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -269,7 +333,7 @@ export function Dashboard() {
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
             return new Date(f.uploadedAt) >= sevenDaysAgo && !f.isDeleted;
           }).length,
-          trash: files.filter(f => f.isDeleted).length,
+          trash: trashFiles.length,
         }}
         storageInfo={storageInfo}
       />
@@ -286,7 +350,7 @@ export function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
               <div>
                 <h1 className="text-2xl font-semibold text-foreground mb-2">
-                  My Drive
+                  My Drive - {activeFilter}
                 </h1>
                 <p className="text-muted-foreground">
                   {filteredFiles.length} of {files.length} files
@@ -340,7 +404,10 @@ export function Dashboard() {
               onFileDelete={handleFileDelete}
               onFileRename={handleFileRename}
               onFileToggleStar={handleFileToggleStar}
+              onFileRestore={handleFileRestore}
+              onFilePermanentDelete={handleFilePermanentDelete}
               searchQuery={searchQuery}
+              showTrashActions={activeFilter === 'trash'}
             />
           </div>        </main>
       </div>

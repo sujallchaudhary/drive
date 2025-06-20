@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
+import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-config';
-import connectDB from '@/lib/db';
+import connectDB from '@/lib/mongodb';
 import { File } from '@/models';
 import { FileFilter } from '@/types';
 

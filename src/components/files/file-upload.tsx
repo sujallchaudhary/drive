@@ -71,20 +71,19 @@ export function FileUpload({ onUpload }: FileUploadProps) {
           <Upload className="h-4 w-4" />
           Upload Files
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[525px]">
-        <DialogHeader>
+      </DialogTrigger>      <DialogContent className="sm:max-w-[525px] max-h-[80vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Upload Files</DialogTitle>
           <DialogDescription>
             Select files to upload to your drive. Maximum file size is 2GB.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-hidden flex flex-col space-y-4">
           {/* Dropzone */}
           <div
             {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors shrink-0
               ${isDragActive 
                 ? 'border-primary bg-primary/5' 
                 : 'border-muted-foreground/25 hover:border-primary/50'
@@ -108,18 +107,20 @@ export function FileUpload({ onUpload }: FileUploadProps) {
 
           {/* Selected Files */}
           {selectedFiles.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium">Selected Files ({selectedFiles.length})</h4>
-              <div className="max-h-40 overflow-y-auto space-y-2">
+            <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+              <h4 className="font-medium mb-2 shrink-0">Selected Files ({selectedFiles.length})</h4>
+              <div className="flex-1 overflow-y-auto pr-2 space-y-2 min-h-0">
                 {selectedFiles.map((file, index) => (
                   <div
                     key={`${file.name}-${index}`}
-                    className="flex items-center justify-between p-2 bg-muted rounded-lg"
+                    className="flex items-center justify-between p-3 bg-muted rounded-lg"
                   >
-                    <div className="flex items-center space-x-2 flex-1 min-w-0">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
                       <File className="h-4 w-4 text-muted-foreground shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{file.name}</p>
+                        <p className="text-sm font-medium truncate" title={file.name}>
+                          {file.name}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {formatFileSize(file.size)}
                         </p>
@@ -129,9 +130,9 @@ export function FileUpload({ onUpload }: FileUploadProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => removeFile(index)}
-                      className="h-6 w-6 p-0 shrink-0"
+                      className="h-8 w-8 p-0 shrink-0 ml-2"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
@@ -140,7 +141,7 @@ export function FileUpload({ onUpload }: FileUploadProps) {
           )}
 
           {/* Actions */}
-          <div className="flex justify-end space-x-2">
+          <div className="flex justify-end space-x-2 shrink-0 pt-4 border-t">
             <Button variant="outline" onClick={handleClose}>
               Cancel
             </Button>

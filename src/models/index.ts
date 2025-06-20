@@ -26,11 +26,13 @@ export interface IFile extends Document {
   uploadedAt: Date;
   updatedAt: Date;
   isDeleted: boolean;
-  isStarred: boolean;
-  tags?: string[];
+  deletedAt?: Date;
+  isStarred: boolean;  tags?: string[];
   description?: string;
   sharedWith?: string[]; // array of user IDs
   isPublic?: boolean;
+  shareToken?: string;
+  shareExpiry?: Date;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -109,6 +111,9 @@ const FileSchema = new Schema<IFile>({
     type: Boolean,
     default: false
   },
+  deletedAt: {
+    type: Date
+  },
   isStarred: {
     type: Boolean,
     default: false
@@ -124,10 +129,17 @@ const FileSchema = new Schema<IFile>({
   sharedWith: [{
     type: Schema.Types.ObjectId,
     ref: 'User'
-  }],
-  isPublic: {
+  }],  isPublic: {
     type: Boolean,
     default: false
+  },
+  shareToken: {
+    type: String,
+    default: null
+  },
+  shareExpiry: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: { createdAt: 'uploadedAt', updatedAt: true }

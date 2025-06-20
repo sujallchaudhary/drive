@@ -7,8 +7,8 @@ import { Toaster } from "@/components/ui/sonner";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Drive Clone - Your Cloud Storage Solution",
-  description: "A modern, feature-rich cloud storage solution built with Next.js and React",
+  title: "SDrive",
+  description: "A modern, feature-rich cloud storage solution.",
 };
 
 export default function RootLayout({

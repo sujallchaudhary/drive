@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { Menu, User, LogOut, Settings } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface HeaderProps {
@@ -51,7 +51,7 @@ export function Header({ user, onMenuClick, onSignOut }: HeaderProps) {
               <span className="text-primary-foreground font-bold text-sm">D</span>
             </div>
             <h1 className="text-xl font-bold text-foreground hidden sm:block">
-              Drive Clone
+              Sdrive
             </h1>
           </div>
         </div>
@@ -79,15 +79,6 @@ export function Header({ user, onMenuClick, onSignOut }: HeaderProps) {
                   </p>
                 </div>
               </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onSignOut}>
                 <LogOut className="mr-2 h-4 w-4" />

@@ -33,10 +33,13 @@ import {
   Image as ImageIcon,
   Video,
   FileText,
-  File
+  File,
+  RotateCcw,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import { ShareDialog } from './share-dialog';
 
 interface FileListProps {
   files: FileMetadata[];
@@ -44,7 +47,10 @@ interface FileListProps {
   onFileDelete: (fileId: string) => void;
   onFileRename: (fileId: string, newName: string) => void;
   onFileToggleStar: (fileId: string) => void;
+  onFileRestore?: (fileId: string) => void;
+  onFilePermanentDelete?: (fileId: string) => void;
   searchQuery: string;
+  showTrashActions?: boolean;
 }
 
 type ViewMode = 'table' | 'grid';
@@ -55,7 +61,10 @@ export function FileList({
   onFileDelete,
   onFileRename,
   onFileToggleStar,
-  searchQuery 
+  onFileRestore,
+  onFilePermanentDelete,
+  searchQuery,
+  showTrashActions = false
 }: FileListProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [editingFile, setEditingFile] = useState<string | null>(null);
@@ -115,6 +124,18 @@ export function FileList({
 
   const handleToggleStar = (file: FileMetadata) => {
     onFileToggleStar(file._id);
+  };
+
+  const handleRestore = (file: FileMetadata) => {
+    if (onFileRestore) {
+      onFileRestore(file._id);
+    }
+  };
+
+  const handlePermanentDelete = (file: FileMetadata) => {
+    if (onFilePermanentDelete && confirm(`Permanently delete "${file.name}"? This action cannot be undone.`)) {
+      onFilePermanentDelete(file._id);
+    }
   };
 
   const handleOpenInNewTab = (file: FileMetadata) => {
@@ -265,40 +286,72 @@ export function FileList({
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          handleDownload(file);
-                        }}>
+                          handleDownload(file);                        }}>
                           <Download className="mr-2 h-4 w-4" />
                           Download
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleStar(file);
-                        }}>
-                          <Star className={`mr-2 h-4 w-4 ${file.isStarred ? 'text-yellow-500 fill-current' : ''}`} />
-                          {file.isStarred ? 'Unstar' : 'Star'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          handleRename(file);
-                        }}>
-                          <Edit3 className="mr-2 h-4 w-4" />
-                          Rename
-                        </DropdownMenuItem>                        <DropdownMenuItem disabled>
-                          <Share className="mr-2 h-4 w-4" />
-                          Share
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(file);
-                          }}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
+                        
+                        {showTrashActions ? (
+                          // Trash-specific actions
+                          <>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleRestore(file);
+                            }}>
+                              <RotateCcw className="mr-2 h-4 w-4" />
+                              Restore
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePermanentDelete(file);
+                              }}
+                              className="text-destructive"
+                            >
+                              <X className="mr-2 h-4 w-4" />
+                              Delete Forever
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          // Regular file actions
+                          <>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleStar(file);
+                            }}>
+                              <Star className={`mr-2 h-4 w-4 ${file.isStarred ? 'text-yellow-500 fill-current' : ''}`} />
+                              {file.isStarred ? 'Unstar' : 'Star'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleRename(file);
+                            }}>
+                              <Edit3 className="mr-2 h-4 w-4" />
+                              Rename
+                            </DropdownMenuItem>
+                            <ShareDialog 
+                              file={file}
+                              trigger={
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                  <Share className="mr-2 h-4 w-4" />
+                                  Share
+                                </DropdownMenuItem>
+                              }
+                            />
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(file);
+                              }}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -319,6 +372,8 @@ export function FileList({
                     <Image
                       src={file.blobUrl}
                       alt={file.name}
+                      height={500}
+                      width={500}
                       className="w-full h-full object-cover rounded-lg"
                     />
                   ) : (
@@ -360,16 +415,67 @@ export function FileList({
                         Download
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(file);
-                        }}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
+                      
+                      {showTrashActions ? (
+                        // Trash-specific actions
+                        <>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            handleRestore(file);
+                          }}>
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Restore
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePermanentDelete(file);
+                            }}
+                            className="text-destructive"
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Delete Forever
+                          </DropdownMenuItem>
+                        </>
+                      ) : (
+                        // Regular file actions
+                        <>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleStar(file);
+                          }}>
+                            <Star className={`mr-2 h-4 w-4 ${file.isStarred ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+                            {file.isStarred ? 'Unstar' : 'Star'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            handleRename(file);
+                          }}>
+                            <Edit3 className="mr-2 h-4 w-4" />
+                            Rename
+                          </DropdownMenuItem>
+                          <ShareDialog 
+                            file={file}
+                            trigger={
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <Share className="mr-2 h-4 w-4" />
+                                Share
+                              </DropdownMenuItem>
+                            }
+                          />
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(file);
+                            }}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
