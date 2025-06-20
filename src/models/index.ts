@@ -1,0 +1,115 @@
+import mongoose, { Schema, Document } from 'mongoose';
+
+export interface IUser extends Document {
+  _id: string;
+  email: string;
+  name: string;
+  password: string;
+  avatar?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IFile extends Document {
+  _id: string;
+  name: string;
+  originalName: string;
+  size: number;
+  mimeType: string;
+  fileType: 'image' | 'video' | 'pdf' | 'document' | 'other';
+  blobUrl: string;
+  blobName: string;
+  userId: string;
+  uploadedAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+  tags?: string[];
+  description?: string;
+}
+
+const UserSchema = new Schema<IUser>({
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  password: {
+    type: String,
+    required: true
+  },
+  avatar: {
+    type: String,
+    default: null
+  }
+}, {
+  timestamps: true
+});
+
+const FileSchema = new Schema<IFile>({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  originalName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  size: {
+    type: Number,
+    required: true
+  },
+  mimeType: {
+    type: String,
+    required: true
+  },
+  fileType: {
+    type: String,
+    enum: ['image', 'video', 'pdf', 'document', 'other'],
+    required: true
+  },
+  blobUrl: {
+    type: String,
+    required: true
+  },
+  blobName: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  userId: {
+    type: String,
+    required: true
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+  tags: [{
+    type: String,
+    trim: true
+  }],
+  description: {
+    type: String,
+    trim: true
+  }
+}, {
+  timestamps: { createdAt: 'uploadedAt', updatedAt: true }
+});
+
+// Create indexes for better query performance
+FileSchema.index({ userId: 1, isDeleted: 1 });
+FileSchema.index({ name: 'text', description: 'text' });
+FileSchema.index({ fileType: 1 });
+FileSchema.index({ uploadedAt: -1 });
+
+export const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+export const File = mongoose.models.File || mongoose.model<IFile>('File', FileSchema);
