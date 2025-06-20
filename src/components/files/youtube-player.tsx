@@ -151,17 +151,30 @@ export function YouTubeThumbnail({
     return 'https://img.youtube.com/vi/default/maxresdefault.jpg';
   };
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    // Fallback to medium resolution thumbnail if maxres fails
+    const target = e.target as HTMLImageElement;
+    if (videoId && target.src.includes('maxresdefault')) {
+      target.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    } else if (videoId && target.src.includes('hqdefault')) {
+      target.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+    }
+  };
+
   return (
     <div 
-      className="relative aspect-video bg-muted rounded-lg overflow-hidden cursor-pointer group"
+      className="relative w-full h-full bg-muted rounded-lg overflow-hidden cursor-pointer group"
       onClick={onClick}
     >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <Image
         src={getThumbnailUrl()}
         alt={title}
-        fill
-        className="object-cover group-hover:scale-105 transition-transform duration-200"
-        unoptimized={getThumbnailUrl().includes('default')}
+        height={480}
+        width={360}
+
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+        onError={handleImageError}
       />
       
       {/* Play overlay */}
@@ -174,6 +187,75 @@ export function YouTubeThumbnail({
       {/* Type indicator */}
       <div className="absolute top-2 right-2">
         <span className="bg-red-600 text-white text-xs px-2 py-1 rounded font-medium">
+          {playlistId ? 'PLAYLIST' : 'YOUTUBE'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Video thumbnail component for preview dialogs and larger displays
+export function YouTubeVideoThumbnail({ 
+  videoId, 
+  playlistId, 
+  title, 
+  onClick,
+  thumbnail,
+  className = "aspect-video"
+}: {
+  videoId?: string;
+  playlistId?: string;
+  title: string;
+  onClick: () => void;
+  thumbnail?: string;
+  className?: string;
+}) {
+  const getThumbnailUrl = () => {
+    // Use provided thumbnail first
+    if (thumbnail) {
+      return thumbnail;
+    }
+    
+    if (videoId) {
+      return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    }
+    // Default playlist thumbnail
+    return 'https://img.youtube.com/vi/default/maxresdefault.jpg';
+  };
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    // Fallback to medium resolution thumbnail if maxres fails
+    const target = e.target as HTMLImageElement;
+    if (videoId && target.src.includes('maxresdefault')) {
+      target.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    } else if (videoId && target.src.includes('hqdefault')) {
+      target.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+    }
+  };
+
+  return (
+    <div 
+      className={`relative ${className} bg-muted rounded-lg overflow-hidden cursor-pointer group`}
+      onClick={onClick}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={getThumbnailUrl()}
+        alt={title}
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+        onError={handleImageError}
+      />
+      
+      {/* Play overlay */}
+      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors duration-200 flex items-center justify-center">
+        <div className="bg-red-600 hover:bg-red-700 rounded-full p-4 transform group-hover:scale-110 transition-transform duration-200">
+          <Play className="h-8 w-8 text-white fill-white ml-1" />
+        </div>
+      </div>
+
+      {/* Type indicator */}
+      <div className="absolute top-2 right-2">
+        <span className="bg-red-600 text-white text-sm px-3 py-1 rounded font-medium">
           {playlistId ? 'PLAYLIST' : 'YOUTUBE'}
         </span>
       </div>
