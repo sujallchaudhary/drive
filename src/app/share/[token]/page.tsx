@@ -8,6 +8,7 @@ import { Download, Eye, FileText, Image as ImageIcon, Video, File as FileIcon } 
 import { formatFileSize, formatRelativeDate } from '@/lib/file-utils';
 import { toast } from 'sonner';
 import { YouTubeEmbed } from '@/components/files/youtube-player';
+import Image from 'next/image';
 
 interface SharedFile {
   _id: string;
@@ -104,14 +105,13 @@ export default function SharePage() {
       </div>
     );
   }
-
   if (error || !file) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <Card className="w-full max-w-md">
-          <CardContent className="p-6 text-center">
-            <FileIcon className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">File Not Found</h3>
+          <CardContent className="p-4 sm:p-6 text-center">
+            <FileIcon className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-base sm:text-lg font-medium mb-2">File Not Found</h3>
             <p className="text-muted-foreground">
               {error || 'The file you are looking for does not exist or is no longer shared.'}
             </p>
@@ -122,20 +122,21 @@ export default function SharePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="container mx-auto px-6 py-4">
-          <h1 className="text-2xl font-bold">Shared File</h1>
+    <div className="min-h-screen bg-background">      <header className="border-b border-border">
+        <div className="container mx-auto px-4 sm:px-6 py-4">
+          <h1 className="text-xl sm:text-2xl font-bold">Sdrive - Shared File</h1>
         </div>
-      </header>
-
-      <main className="container mx-auto px-6 py-8">
-        <Card className="w-full max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3">
-              {getFileIcon(file.fileType)}
-              <div className="flex-1">
-                <h2 className="text-xl font-semibold truncate">{file.name}</h2>                <p className="text-sm text-muted-foreground">
+      </header><main className="container mx-auto px-4 sm:px-6 py-8">
+        <Card className="w-full max-w-2xl mx-auto overflow-hidden">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-start gap-3">
+              <div className="shrink-0 mt-1">
+                {getFileIcon(file.fileType)}
+              </div>              <div className="flex-1 min-w-0 space-y-1 overflow-hidden">
+                <h2 className="text-lg sm:text-xl font-semibold truncate leading-tight" title={file.name}>
+                  {file.name}
+                </h2>
+                <p className="text-sm text-muted-foreground truncate">
                   {file.isYouTube ? 'YouTube' : formatFileSize(file.size)} • Shared {formatRelativeDate(new Date(file.uploadedAt))}
                 </p>
               </div>
@@ -151,11 +152,11 @@ export default function SharePage() {
             )}            {/* File Preview */}
             {file.fileType === 'image' && (
               <div className="rounded-lg border overflow-hidden relative h-96">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
+                <Image 
                   src={file.blobUrl} 
                   alt={file.name}
-                  className="w-full h-full object-contain"
+                  fill
+                  className="object-contain"
                 />
               </div>
             )}

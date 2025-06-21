@@ -34,7 +34,7 @@ export async function POST(
 
     // Generate a unique share token if not exists
     if (!file.shareToken) {
-      file.shareToken = crypto.randomBytes(32).toString('hex');
+      file.shareToken = crypto.randomBytes(8).toString('hex');
       file.isPublic = true;
       await file.save();
     }

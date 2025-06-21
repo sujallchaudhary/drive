@@ -33,6 +33,8 @@ export async function GET(
         fileType: file.fileType,
         blobUrl: file.blobUrl,
         uploadedAt: file.uploadedAt,
+        isYouTube:file.isYouTube,
+        youTubeData:file.youTubeData,
         description: file.description
       }
     });

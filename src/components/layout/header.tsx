@@ -45,15 +45,6 @@ export function Header({ user, onMenuClick, onSignOut }: HeaderProps) {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">D</span>
-            </div>
-            <h1 className="text-xl font-bold text-foreground hidden sm:block">
-              Sdrive
-            </h1>
-          </div>
         </div>
 
         <div className="flex items-center space-x-4">

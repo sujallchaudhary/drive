@@ -15,7 +15,8 @@ export function Dashboard() {
   const { data: session, status } = useSession();  const [files, setFiles] = useState<FileMetadata[]>([]);
   const [trashFiles, setTrashFiles] = useState<FileMetadata[]>([]);
   const [filteredFiles, setFilteredFiles] = useState<FileMetadata[]>([]);
-  const [isLoading, setIsLoading] = useState(true);  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FileFilter>('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [storageInfo, setStorageInfo] = useState({
@@ -318,7 +319,7 @@ export function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
               <div>
                 <h1 className="text-2xl font-semibold text-foreground mb-2">
-                  My Drive - {activeFilter}
+                  My Drive - {activeFilter.charAt(0).toUpperCase()+activeFilter.slice(1)}
                 </h1>
                 <p className="text-muted-foreground">
                   {filteredFiles.length} of {files.length} files
@@ -334,8 +335,8 @@ export function Dashboard() {
                   <YouTubeUpload onUpload={handleYouTubeUpload} />
                 </div>
               </div>
-            </div>            {/* Upload Progress is now handled inside the FileUploadSecure component */}
-
+            </div>
+            
             <FileList
               files={filteredFiles}
               isLoading={isLoading}

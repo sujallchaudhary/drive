@@ -1,11 +1,12 @@
 'use client';
 
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { FileFilter } from '@/types';
 import { 
   Files, 
-  Image, 
+  Image as ImageIcon, 
   Video, 
   FileText, 
   File,
@@ -13,7 +14,8 @@ import {
   HardDrive,
   Trash2,
   Star,
-  Clock
+  Clock,
+  Upload
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -22,6 +24,7 @@ interface SidebarProps {
   onClose: () => void;
   activeFilter: FileFilter;
   onFilterChange: (filter: FileFilter) => void;
+  onUpload?: () => void;
   fileStats: {
     total: number;
     images: number;
@@ -48,7 +51,7 @@ const filterItems = [
   {
     id: 'images' as FileFilter,
     label: 'Images',
-    icon: Image,
+    icon: ImageIcon,
     color: 'text-green-500',
   },
   {
@@ -97,6 +100,7 @@ export function Sidebar({
   onClose, 
   activeFilter, 
   onFilterChange, 
+  onUpload,
   fileStats,
   storageInfo
 }: SidebarProps) {
@@ -149,7 +153,7 @@ export function Sidebar({
       )}      {/* Sidebar */}
       <div
         className={cn(
-          'sidebar-container fixed left-0 top-0 z-50 h-full w-64 transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 lg:z-0',
+          'sidebar-container fixed left-0 top-0 z-50 h-full w-64 transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 lg:z-0 bg-background lg:border-r lg:border-border',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -158,10 +162,36 @@ export function Sidebar({
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
-        </div>
-
-        <div className="p-4 space-y-1">
+        </div>        <div className="p-4 space-y-1">
           <div className="mb-6">
+            {/* Logo */}
+            <div className="flex justify-center mb-6">
+              <Image
+                src="/logo.png"
+                alt="Sdrive Logo"
+                width={120}
+                height={40}
+                className="object-contain"
+              />
+            </div>
+            
+            {/* Upload Button */}
+            {onUpload && (
+              <div className="mb-4">
+                <Button
+                  onClick={() => {
+                    onUpload();
+                    if (isMobile) {
+                      onClose();
+                    }
+                  }}
+                  className="w-full justify-start h-10 px-4 bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  <Upload className="mr-3 h-4 w-4" />
+                  <span className="flex-1 text-left">Upload Files</span>
+                </Button>
+              </div>
+            )}
             <h3 className="mb-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Browse Files
             </h3>

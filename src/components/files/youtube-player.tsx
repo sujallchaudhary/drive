@@ -8,7 +8,7 @@ import {
   DialogTitle 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Play, ExternalLink, X } from 'lucide-react';
+import { Play, ExternalLink } from 'lucide-react';
 
 interface YouTubePlayerProps {
   videoId?: string;
@@ -94,7 +94,7 @@ export function YouTubePlayer({ videoId, playlistId, title, isOpen, onOpenChange
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] p-0">
         <DialogHeader className="p-6 pb-0">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center mt-6 justify-between">
             <DialogTitle className="flex items-center gap-2">
               <Play className="h-5 w-5 text-red-500" />
               {title}
@@ -103,9 +103,6 @@ export function YouTubePlayer({ videoId, playlistId, title, isOpen, onOpenChange
               <Button variant="outline" size="sm" onClick={openInYouTube}>
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Open in YouTube
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-                <X className="h-4 w-4" />
               </Button>
             </div>
           </div>

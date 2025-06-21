@@ -66,7 +66,7 @@ export function SignUpForm() {
       <CardHeader>
         <CardTitle>Create an account</CardTitle>
         <CardDescription>
-          Join us to start using your personal cloud storage
+          Create account to start using your personal cloud storage
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -161,7 +161,7 @@ export function SignUpForm() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full mt-4" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Account
           </Button>
