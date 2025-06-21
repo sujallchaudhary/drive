@@ -128,17 +128,26 @@ export function Dashboard() {
   }, [files, trashFiles, activeFilter, searchQuery]);  // Load files on component mount
   useEffect(() => {
     if (status === 'authenticated') {
-      fetchFiles();
-      fetchTrashFiles();
-      fetchStorageInfo();
+      const loadData = async () => {
+        try {
+          await Promise.all([fetchFiles(), fetchTrashFiles(), fetchStorageInfo()]);
+        } catch (error) {
+          console.error('Error loading initial data:', error);
+          toast.error('Failed to load data');
+        }
+      };
+      loadData();
     }
   }, [status]);  // Handle file upload - now just refreshes the file list since upload is handled in component
   const handleFileUpload = async () => {
-    // Just refresh the file list and storage info since upload is already complete
-    await fetchFiles();
-    await fetchStorageInfo();
-  };
-  // Handle file delete
+    try {
+      // Just refresh the file list and storage info since upload is already complete
+      await Promise.all([fetchFiles(), fetchStorageInfo()]);
+    } catch (error) {
+      console.error('Error refreshing data after upload:', error);
+      toast.error('Failed to refresh data');
+    }
+  };  // Handle file delete
   const handleFileDelete = async (fileId: string) => {
     try {
       const response = await fetch(`/api/files/${fileId}`, {
@@ -150,7 +159,9 @@ export function Dashboard() {
       }
 
       setFiles(prev => prev.filter(f => f._id !== fileId));
-      await fetchStorageInfo(); // Refresh storage info
+      
+      // Refresh storage info after deletion
+      await fetchStorageInfo();
       toast.success('File deleted successfully');
     } catch (error) {
       console.error('Delete error:', error);
@@ -198,7 +209,6 @@ export function Dashboard() {
       toast.error('Failed to update star status');
     }
   };
-
   // Handle file restore (from trash)
   const handleFileRestore = async (fileId: string) => {
     try {
@@ -212,14 +222,18 @@ export function Dashboard() {
 
       toast.success('File restored successfully');
       
-      // Refresh both regular files and trash files
-      await Promise.all([fetchFiles(), fetchTrashFiles(), fetchStorageInfo()]);
+      // Refresh both regular files and trash files in parallel
+      try {
+        await Promise.all([fetchFiles(), fetchTrashFiles(), fetchStorageInfo()]);
+      } catch (error) {
+        console.error('Error refreshing data after restore:', error);
+        toast.error('Failed to refresh data');
+      }
     } catch (error) {
       console.error('Error restoring file:', error);
       toast.error('Failed to restore file');
     }
   };
-
   // Handle permanent delete
   const handleFilePermanentDelete = async (fileId: string) => {
     try {
@@ -233,8 +247,13 @@ export function Dashboard() {
 
       toast.success('File permanently deleted');
       
-      // Refresh trash files and storage info
-      await Promise.all([fetchTrashFiles(), fetchStorageInfo()]);
+      // Refresh trash files and storage info in parallel
+      try {
+        await Promise.all([fetchTrashFiles(), fetchStorageInfo()]);
+      } catch (error) {
+        console.error('Error refreshing data after permanent delete:', error);
+        toast.error('Failed to refresh data');
+      }
     } catch (error) {
       console.error('Error permanently deleting file:', error);
       toast.error('Failed to permanently delete file');
