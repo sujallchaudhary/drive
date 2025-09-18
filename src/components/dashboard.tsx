@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { Header } from './layout/header';
 import { Sidebar } from './layout/sidebar';
@@ -10,6 +10,7 @@ import { YouTubeUpload } from './files/youtube-upload';
 import { SearchBar } from './ui/search-bar';
 import { FileFilter, FileMetadata } from '@/types';
 import { toast } from 'sonner';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 export function Dashboard() {
   const { data: session, status } = useSession();  const [files, setFiles] = useState<FileMetadata[]>([]);
@@ -23,6 +24,12 @@ export function Dashboard() {
     used: 0,
     limit: 5 * 1024 * 1024 * 1024 // 5GB default
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const pageLimit = 20;
   // Fetch storage info
   const fetchStorageInfo = async () => {
     try {
@@ -39,11 +46,26 @@ export function Dashboard() {
     }
   };
 
-  // Fetch files from API
-  const fetchFiles = async () => {
+  // Fetch files from API with pagination
+  const fetchFiles = async (page = 1, append = false) => {
     try {
-      setIsLoading(true);
-      const response = await fetch('/api/files');
+      if (!append) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: pageLimit.toString(),
+        filter: activeFilter,
+      });
+
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+      }
+
+      const response = await fetch(`/api/files?${params}`);
       
       if (!response.ok) {
         if (response.status === 401) {
@@ -54,14 +76,37 @@ export function Dashboard() {
       }
 
       const data = await response.json();
-      setFiles(data.files || []);
+      const newFiles = data.files || [];
+      
+      if (append) {
+        setFiles(prev => [...prev, ...newFiles]);
+      } else {
+        setFiles(newFiles);
+      }
+      
+      setHasMore(data.pagination?.hasMore ?? false);
+      setCurrentPage(page);
     } catch (error) {
       console.error('Error fetching files:', error);
       toast.error('Failed to load files');
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
   };
+  // Fetch more files for infinite scroll
+  const fetchMoreFiles = useCallback(async () => {
+    if (activeFilter === 'trash' || !hasMore || isLoadingMore) return;
+    await fetchFiles(currentPage + 1, true);
+  }, [activeFilter, hasMore, isLoadingMore, currentPage]);
+
+  // Infinite scroll hook
+  const { isFetching, lastElementRef } = useInfiniteScroll(
+    fetchMoreFiles,
+    hasMore && activeFilter !== 'trash',
+    { threshold: 0.5, rootMargin: '100px' }
+  );
+
   // Fetch trash files from API
   const fetchTrashFiles = async () => {
     try {
@@ -88,44 +133,36 @@ export function Dashboard() {
     // Use trash files when filter is trash, otherwise use regular files
     if (activeFilter === 'trash') {
       result = trashFiles;
-    } else {
-      result = files;
       
-      // Apply filter for non-trash files
-      if (activeFilter !== 'all') {
-        if (activeFilter === 'starred') {
-          result = result.filter(file => file.isStarred);
-        } else if (activeFilter === 'recent') {
-          const sevenDaysAgo = new Date();
-          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          result = result.filter(file => new Date(file.uploadedAt) >= sevenDaysAgo);
-        } else {
-          const typeMap: Record<string, string[]> = {
-            images: ['image'],
-            videos: ['video'],
-            pdfs: ['pdf'],
-            docs: ['document'],
-          };
-          
-          const allowedTypes = typeMap[activeFilter];
-          if (allowedTypes) {
-            result = result.filter(file => allowedTypes.includes(file.fileType));
-          }
-        }
+      // Apply client-side search for trash files
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        result = result.filter(file => 
+          file.name.toLowerCase().includes(query) ||
+          file.originalName.toLowerCase().includes(query) ||
+          (file.description && file.description.toLowerCase().includes(query)) ||
+          (file.tags && file.tags.some(tag => tag.toLowerCase().includes(query)))
+        );
       }
+    } else {
+      // For non-trash files, the filtering and search is handled server-side
+      result = files;
     }
 
-    // Apply search
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(file => 
-        file.name.toLowerCase().includes(query) ||
-        file.originalName.toLowerCase().includes(query) ||
-        (file.description && file.description.toLowerCase().includes(query)) ||
-        (file.tags && file.tags.some(tag => tag.toLowerCase().includes(query)))
-      );
-    }    setFilteredFiles(result);
-  }, [files, trashFiles, activeFilter, searchQuery]);  // Load files on component mount
+    setFilteredFiles(result);
+  }, [files, trashFiles, activeFilter, searchQuery]);
+
+  // Reset pagination when filter or search changes
+  useEffect(() => {
+    if (activeFilter !== 'trash') {
+      setFiles([]);
+      setCurrentPage(1);
+      setHasMore(true);
+      fetchFiles(1, false);
+    }
+  }, [activeFilter, searchQuery]);
+
+  // Load files on component mount
   useEffect(() => {
     if (status === 'authenticated') {
       const loadData = async () => {
@@ -141,8 +178,11 @@ export function Dashboard() {
   }, [status]);  // Handle file upload - now just refreshes the file list since upload is handled in component
   const handleFileUpload = async () => {
     try {
-      // Just refresh the file list and storage info since upload is already complete
-      await Promise.all([fetchFiles(), fetchStorageInfo()]);
+      // Reset pagination and refresh files
+      setFiles([]);
+      setCurrentPage(1);
+      setHasMore(true);
+      await Promise.all([fetchFiles(1, false), fetchStorageInfo()]);
     } catch (error) {
       console.error('Error refreshing data after upload:', error);
       toast.error('Failed to refresh data');
@@ -359,6 +399,9 @@ export function Dashboard() {
             <FileList
               files={filteredFiles}
               isLoading={isLoading}
+              isLoadingMore={isLoadingMore || isFetching}
+              hasMore={hasMore && activeFilter !== 'trash'}
+              lastElementRef={lastElementRef}
               onFileDelete={handleFileDelete}
               onFileRename={handleFileRename}
               onFileToggleStar={handleFileToggleStar}

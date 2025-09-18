@@ -45,6 +45,9 @@ import { YouTubePlayer, YouTubeThumbnail } from './youtube-player';
 interface FileListProps {
   files: FileMetadata[];
   isLoading: boolean;
+  isLoadingMore?: boolean;
+  hasMore?: boolean;
+  lastElementRef?: (node: HTMLElement | null) => void;
   onFileDelete: (fileId: string) => void;
   onFileRename: (fileId: string, newName: string) => void;
   onFileToggleStar: (fileId: string) => void;
@@ -59,6 +62,9 @@ type ViewMode = 'table' | 'grid';
 export function FileList({ 
   files, 
   isLoading, 
+  isLoadingMore = false,
+  hasMore = false,
+  lastElementRef,
   onFileDelete,
   onFileRename,
   onFileToggleStar,
@@ -256,8 +262,9 @@ export function FileList({
                 <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>              {files.map((file) => (                <TableRow 
+            <TableBody>              {files.map((file, index) => (                <TableRow 
                   key={file._id} 
+                  ref={index === files.length - 1 && hasMore && lastElementRef ? lastElementRef : null}
                   className="hover:bg-muted/50 cursor-pointer"
                   onClick={() => {
                     // Don't open file if dropdown is open or editing
@@ -404,10 +411,18 @@ export function FileList({
               ))}
             </TableBody>
           </Table>
+          {/* Loading more indicator for table view */}
+          {isLoadingMore && (
+            <div className="p-4 text-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+              <p className="text-sm text-muted-foreground mt-2">Loading more files...</p>
+            </div>
+          )}
         </div>
-      ) : (        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">          {files.map((file) => (
+      ) : (        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">          {files.map((file, index) => (
             <Card 
               key={file._id} 
+              ref={index === files.length - 1 && hasMore && lastElementRef ? lastElementRef : null}
               className="hover:shadow-md transition-shadow"
             >
               <CardContent className="p-4"><div className="aspect-square bg-muted rounded-lg flex items-center justify-center mb-3 overflow-hidden">                  {file.isYouTube ? (
@@ -538,6 +553,14 @@ export function FileList({
               </CardContent>
             </Card>
           ))}
+          
+          {/* Loading more indicator for grid view */}
+          {isLoadingMore && (
+            <div className="mt-8 text-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+              <p className="text-sm text-muted-foreground mt-2">Loading more files...</p>
+            </div>
+          )}
         </div>
       )}
 
